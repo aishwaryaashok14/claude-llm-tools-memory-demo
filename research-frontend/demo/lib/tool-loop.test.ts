@@ -7,8 +7,9 @@ describe("executeToolUse", () => {
       name: "rag_search",
       input: { query: "Wispr Flow" },
     });
-    expect(typeof result).toBe("string");
-    expect(result.toLowerCase()).toContain("wispr");
+    expect(typeof result.text).toBe("string");
+    expect(result.text.toLowerCase()).toContain("wispr");
+    expect(result.imageBase64).toBeUndefined();
   });
 
   it("returns an error string for unknown tools instead of throwing", async () => {
@@ -16,6 +17,6 @@ describe("executeToolUse", () => {
       name: "nonexistent_tool",
       input: {},
     });
-    expect(result).toMatch(/unknown/i);
+    expect(result.text).toMatch(/unknown/i);
   });
 });

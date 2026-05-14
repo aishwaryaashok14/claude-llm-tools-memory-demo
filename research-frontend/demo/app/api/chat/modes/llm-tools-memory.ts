@@ -41,15 +41,36 @@ export async function runLlmToolsMemory(messages: ChatMessage[]) {
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
     for (const block of response.content) {
       if (block.type !== "tool_use") continue;
-      traces.push(formatTrace(block.name, block.input as Record<string, unknown>));
-      const output = await executeToolUse({
+      const result = await executeToolUse({
         name: block.name,
         input: block.input as Record<string, unknown>,
       });
+
+      let trace = formatTrace(block.name, block.input as Record<string, unknown>);
+      let toolContent: Anthropic.ToolResultBlockParam["content"];
+
+      if (result.imageBase64) {
+        toolContent = [
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: "image/png",
+              data: result.imageBase64,
+            },
+          },
+          { type: "text", text: result.text },
+        ];
+        trace += `<br/><img src="data:image/png;base64,${result.imageBase64}" alt="screenshot" style="max-width:100%;margin-top:6px;border-radius:6px;border:1px solid #ececec" />`;
+      } else {
+        toolContent = result.text.slice(0, 6000);
+      }
+
+      traces.push(trace);
       toolResults.push({
         type: "tool_result",
         tool_use_id: block.id,
-        content: output.slice(0, 6000),
+        content: toolContent,
       });
     }
 
