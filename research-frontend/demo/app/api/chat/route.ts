@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runLlmOnly } from "./modes/llm-only";
 import { runLlmTools } from "./modes/llm-tools";
+import { runLlmToolsMemory } from "./modes/llm-tools-memory";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest) {
       case "tools":
         return NextResponse.json(await runLlmTools(messages));
       case "memory":
-        return NextResponse.json({ content: `Mode 'memory' not yet wired.`, traces: [] });
+        return NextResponse.json(await runLlmToolsMemory(messages));
       default:
         return NextResponse.json({ error: `Unknown mode: ${mode}` }, { status: 400 });
     }
