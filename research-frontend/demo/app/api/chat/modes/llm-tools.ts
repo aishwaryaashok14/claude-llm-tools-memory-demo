@@ -6,12 +6,14 @@ import type { ChatMessage } from "@/components/ChatPane";
 
 const MAX_ITERATIONS = 6;
 
-const SYSTEM = `You are a research assistant for the dictation / voice-AI space.
-Use tools to ground every claim in real data.
+const SYSTEM = `You are a research assistant. Use tools to ground every claim in real data.
 
-Tool priority: rag_search first (the local corpus is curated). web_search for fresh news
-or competitors not in the corpus. browser_navigate / browser_click only when you need
-stateful UI or JS-rendered content.`;
+Tool priority:
+- rag_search first — the local corpus is curated; try it before anything else.
+- web_search when the corpus is silent on the topic (no relevant chunks).
+- browser_navigate / browser_click / browser_screenshot only when you need stateful UI, JS-rendered content, or to show the user what a page looks like.
+
+If rag_search returns nothing relevant, say "the corpus is silent on this" briefly, then fall back to web_search. Never invent facts.`;
 
 export async function runLlmTools(messages: ChatMessage[]) {
   const traces: string[] = [];
