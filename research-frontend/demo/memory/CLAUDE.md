@@ -20,4 +20,7 @@ appends to the "Known facts" section.
 
 ## Known facts
 
-_(this section grows over the conversation)_
+- User is researching Luma AI in the AI video/3D generation segment (pivoting from smallest.ai research).
+
+- User is researching smallest.ai in the voice-AI / text-to-speech infrastructure segment.
+
