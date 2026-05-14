@@ -6,10 +6,31 @@ import { MemoryPanel } from "@/components/MemoryPanel";
 
 type Mode = "llm" | "tools" | "memory";
 
-const TABS: { id: Mode; label: string; hint: string }[] = [
-  { id: "llm", label: "LLM", hint: "no tools, no memory" },
-  { id: "tools", label: "+ Tools", hint: "rag + web + browser" },
-  { id: "memory", label: "+ Tools + Memory", hint: "memory + skill + remember_fact" },
+const TABS: { id: Mode; label: string; hint: string; banner: string; tone: "warn" | "ok" }[] = [
+  {
+    id: "llm",
+    label: "LLM",
+    hint: "no tools, no memory",
+    banner:
+      "⚠️ No tools, no memory. Answers come only from the LLM's training data (cutoff ~early 2025). No web access, no corpus retrieval, no source citations possible.",
+    tone: "warn",
+  },
+  {
+    id: "tools",
+    label: "+ Tools",
+    hint: "rag + web + browser",
+    banner:
+      "✓ Tools enabled: rag_search (5-doc corpus), web_search (Anthropic live search), browser_* (Playwright). The model chooses which tool to call.",
+    tone: "ok",
+  },
+  {
+    id: "memory",
+    label: "+ Tools + Memory",
+    hint: "memory + skill + remember_fact",
+    banner:
+      "✓ Tools + Memory: everything from the Tools tab, plus the system prompt loads memory/CLAUDE.md and skills/research/SKILL.md every turn. The remember_fact tool persists user context.",
+    tone: "ok",
+  },
 ];
 
 export default function Home() {
@@ -19,6 +40,8 @@ export default function Home() {
   });
   const [loading, setLoading] = useState(false);
   const [mem, setMem] = useState({ claudeMd: "", skillMd: "" });
+
+  const activeTab = TABS.find((t) => t.id === active)!;
 
   async function refreshMemory() {
     try {
@@ -87,7 +110,18 @@ export default function Home() {
 
         <div
           className={
-            "h-[640px] " +
+            "px-6 py-3 text-xs leading-relaxed " +
+            (activeTab.tone === "warn"
+              ? "border-b border-orange-border bg-orange-soft text-ink-2"
+              : "border-b border-line bg-[#fafafa] text-ink-2")
+          }
+        >
+          {activeTab.banner}
+        </div>
+
+        <div
+          className={
+            "h-[600px] " +
             (active === "memory" ? "grid grid-cols-[1fr_280px]" : "flex")
           }
         >
