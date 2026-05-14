@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChatPane, type ChatMessage } from "@/components/ChatPane";
 
 type Mode = "llm" | "tools" | "memory";
 
@@ -12,6 +13,37 @@ const TABS: { id: Mode; label: string }[] = [
 
 export default function Home() {
   const [active, setActive] = useState<Mode>("llm");
+  const [histories, setHistories] = useState<Record<Mode, ChatMessage[]>>({
+    llm: [], tools: [], memory: [],
+  });
+  const [loading, setLoading] = useState(false);
+
+  async function handleSend(text: string) {
+    const next = [...histories[active], { role: "user", content: text } as ChatMessage];
+    setHistories({ ...histories, [active]: next });
+    setLoading(true);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: active, messages: next }),
+      });
+      const data = await res.json();
+      const reply: ChatMessage = {
+        role: "assistant",
+        content: data.content ?? "(no reply)",
+        traces: data.traces,
+      };
+      setHistories((h) => ({ ...h, [active]: [...next, reply] }));
+    } catch (err) {
+      setHistories((h) => ({
+        ...h,
+        [active]: [...next, { role: "assistant", content: `Error: ${(err as Error).message}` }],
+      }));
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <main className="mx-auto max-w-5xl p-8">
@@ -37,8 +69,12 @@ export default function Home() {
             </button>
           ))}
         </div>
-        <div className="min-h-[420px] p-6 text-sm text-ink-3">
-          Tab placeholder: <strong>{active}</strong>. Chat UI lands in Task 7.
+        <div className="min-h-[440px] p-6">
+          <ChatPane
+            messages={histories[active]}
+            loading={loading}
+            onSend={handleSend}
+          />
         </div>
       </div>
     </main>
