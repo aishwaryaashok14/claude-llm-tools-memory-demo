@@ -60,7 +60,7 @@ export default function Home() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl p-8">
+    <main className="mx-auto max-w-screen-2xl p-8">
       <header className="mb-6 flex items-center gap-3">
         <div className="flex h-7 w-7 items-center justify-center rounded-md bg-orange font-bold text-white">✻</div>
         <h1 className="text-base font-semibold">Competitor Research Agent — Agentic AI PM Course</h1>
@@ -87,11 +87,11 @@ export default function Home() {
 
         <div
           className={
-            "min-h-[460px] " +
-            (active === "memory" ? "grid grid-cols-[1fr_260px]" : "")
+            "h-[640px] " +
+            (active === "memory" ? "grid grid-cols-[1fr_280px]" : "flex")
           }
         >
-          <div className="p-6">
+          <div className="flex flex-1 flex-col p-6">
             <ChatPane
               messages={histories[active]}
               loading={loading}
