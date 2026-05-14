@@ -22,8 +22,3 @@ three harness layers, side-by-side:
 
 Run `research-frontend/demo/` for the working version.
 Work through `research-frontend/scaffold/` to build it yourself.
-
-## Spec & Plan
-
-- Design: [docs/superpowers/specs/2026-05-14-research-frontend-design.md](docs/superpowers/specs/2026-05-14-research-frontend-design.md)
-- Plan: [docs/superpowers/plans/2026-05-14-research-frontend.md](docs/superpowers/plans/2026-05-14-research-frontend.md)
