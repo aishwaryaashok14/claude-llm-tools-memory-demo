@@ -10,8 +10,23 @@ const MAX_ITERATIONS = 6;
 export async function runLlmToolsMemory(messages: ChatMessage[]) {
   const [claudeMd, skillMd] = await Promise.all([readMemory(), readSkill()]);
 
-  const system =
-    `${skillMd.trim()}\n\n<user_context>\n${claudeMd.trim()}\n</user_context>`;
+  const system = [
+    `You are the assistant in the Memory tab of a teaching demo. The lesson here is how *persistent context + a written procedure* change agent behavior.`,
+    ``,
+    `Operating rules for this tab (override anything that would contradict):`,
+    `1. ALWAYS read <user_context> below FIRST. It is your persistent memory across turns and sessions.`,
+    `2. If <user_context> does not name the user's current research target and segment, you MUST follow SKILL Step 1 (scope question) BEFORE any tool call. Do not call rag_search/web_search/browser_* yet.`,
+    `3. The instant the user reveals a durable fact (target, segment, angle, constraint, decision), call \`remember_fact\` exactly once with a one-sentence summary. This is the headline behavior of this tab — leaning on it is required, not optional.`,
+    `4. Follow the procedure in the SKILL document strictly. Do not skip Step 1 to "save time."`,
+    ``,
+    `--- SKILL ---`,
+    skillMd.trim(),
+    ``,
+    `--- USER CONTEXT (persistent memory) ---`,
+    `<user_context>`,
+    claudeMd.trim(),
+    `</user_context>`,
+  ].join("\n");
 
   const traces: string[] = [];
   const apiMessages: Anthropic.MessageParam[] = messages.map((m) => ({

@@ -18,12 +18,24 @@ the corpus is silent. Reach for `browser_*` only if the page is stateful
 
 ## Procedure
 
-### Step 1 — Scope
-Ask the user **once**: "What product or feature are you researching? Who is
-it for?" Skip if they already said. Cap at 2 clarifying questions.
+### Step 1 — Scope (DO THIS FIRST, every new research thread)
+
+Before any tool call, read `<user_context>` in your system prompt.
+
+- **If `<user_context>` already names the user's research target and segment**, skip to Step 2.
+- **Otherwise STOP** and ask the user, in one short message:
+  > "What product or feature are you researching? Who is it for?"
+- After they answer, **immediately call `remember_fact`** with one sentence
+  capturing the target + segment (e.g., *"user is researching smallest.ai in
+  the voice-AI infrastructure segment"*). Then proceed to Step 2.
+
+Do not fire `rag_search` or `web_search` before scope is established. The
+corpus is dictation-specific; an off-domain query would return misleading
+chunks.
 
 ### Step 2 — Identify competitors
-`rag_search` first. If the corpus is silent, fall back to `web_search`. List
+`rag_search` first IF the user's target is in the dictation/voice-AI space.
+If the corpus is silent (or wrong domain), fall back to `web_search`. List
 the competitors back briefly so the user can correct the set.
 
 ### Step 3 — Per competitor, gather
@@ -72,13 +84,16 @@ End with exactly one line:
 No summary. No "let me know if you want more." Just the question.
 
 ## Do
-- ✅ Use `rag_search` first — it's curated, cheap, and deterministic
+- ✅ **Scope first.** If `<user_context>` is empty about the current research target, ask Step 1 BEFORE any tool call.
+- ✅ **Persist aggressively.** Any time the user reveals a durable fact (research target, segment, strategic angle, constraint, decision), call `remember_fact` once. This is the whole point of this layer.
+- ✅ Use `rag_search` first when the target is dictation/voice-AI (corpus domain)
 - ✅ Quote pricing verbatim with a source URL
-- ✅ When the user reveals a new angle, segment, or constraint they care about, call `remember_fact`
 - ✅ Acknowledge limits — say "the corpus is silent on X" rather than inventing
 - ✅ Update a fact in CLAUDE.md instead of appending a contradictory one
 
 ## Don't
+- ❌ Fire `rag_search` or `web_search` before scope is established (Step 1)
+- ❌ Run `rag_search` on a query outside the dictation/voice-AI domain — the corpus is curated for one segment; matches will be misleading
 - ❌ Invent pricing or details when sources are vague
 - ❌ Open a browser when `rag_search` or `web_search` would have sufficed (slow + expensive)
 - ❌ Add a 7th bullet "for completeness"
