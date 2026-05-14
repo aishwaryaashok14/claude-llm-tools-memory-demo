@@ -1,6 +1,7 @@
 import { anthropic, MODEL } from "@/lib/anthropic";
 import { toolsForToolsMode } from "@/lib/tools";
 import { executeToolUse, formatTrace } from "@/lib/tool-loop";
+import { buildStickies, type ObservedToolCall } from "@/lib/stickies";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { ChatMessage } from "@/components/ChatPane";
 
@@ -17,6 +18,8 @@ If rag_search returns nothing relevant, say "the corpus is silent on this" brief
 
 export async function runLlmTools(messages: ChatMessage[]) {
   const traces: string[] = [];
+  const toolCalls: ObservedToolCall[] = [];
+  let webSearchUsed = false;
   const apiMessages: Anthropic.MessageParam[] = messages.map((m) => ({
     role: m.role,
     content: m.content,
@@ -31,12 +34,22 @@ export async function runLlmTools(messages: ChatMessage[]) {
       messages: apiMessages,
     });
 
+    for (const block of response.content) {
+      if ((block as { type: string }).type === "server_tool_use" && (block as { name?: string }).name === "web_search") {
+        webSearchUsed = true;
+      }
+    }
+
     if (response.stop_reason !== "tool_use") {
       const text = response.content
         .filter((b): b is Anthropic.TextBlock => b.type === "text")
         .map((b) => b.text)
         .join("\n");
-      return { content: text, traces };
+      return {
+        content: text,
+        traces,
+        stickies: buildStickies({ mode: "tools", toolCalls, webSearchUsed }),
+      };
     }
 
     apiMessages.push({ role: "assistant", content: response.content });
@@ -44,6 +57,10 @@ export async function runLlmTools(messages: ChatMessage[]) {
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
     for (const block of response.content) {
       if (block.type !== "tool_use") continue;
+      toolCalls.push({
+        name: block.name,
+        input: block.input as Record<string, unknown>,
+      });
       const result = await executeToolUse({
         name: block.name,
         input: block.input as Record<string, unknown>,
@@ -81,5 +98,9 @@ export async function runLlmTools(messages: ChatMessage[]) {
     apiMessages.push({ role: "user", content: toolResults });
   }
 
-  return { content: "(stopped after max tool iterations)", traces };
+  return {
+    content: "(stopped after max tool iterations)",
+    traces,
+    stickies: buildStickies({ mode: "tools", toolCalls, webSearchUsed }),
+  };
 }

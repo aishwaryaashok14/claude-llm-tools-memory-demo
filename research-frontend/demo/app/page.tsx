@@ -69,6 +69,7 @@ export default function Home() {
         role: "assistant",
         content: data.content ?? "(no reply)",
         traces: data.traces,
+        stickies: data.stickies,
       };
       setHistories((h) => ({ ...h, [active]: [...next, reply] }));
       if (active === "memory") refreshMemory();

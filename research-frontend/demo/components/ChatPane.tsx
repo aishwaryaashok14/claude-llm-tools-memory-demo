@@ -3,10 +3,44 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import type { Sticky } from "@/lib/stickies";
 
 export type ChatMessage =
   | { role: "user"; content: string }
-  | { role: "assistant"; content: string; traces?: string[] };
+  | { role: "assistant"; content: string; traces?: string[]; stickies?: Sticky[] };
+
+const STICKY_STYLES: Record<Sticky["kind"], { bg: string; border: string; text: string; icon: string; tag: string }> = {
+  "llm-only": { bg: "#f4f4f5", border: "#d4d4d8", text: "#3f3f46", icon: "🧠", tag: "Layer" },
+  tool:        { bg: "#fff4e8", border: "#f0d4c1", text: "#7a3e1c", icon: "🔧", tag: "Tool" },
+  memory:      { bg: "#eef4ff", border: "#cfd9f7", text: "#1f3a8a", icon: "📄", tag: "Memory" },
+  skill:       { bg: "#f5eeff", border: "#dccaf7", text: "#5b21b6", icon: "📘", tag: "Skill" },
+  remember:    { bg: "#ecfdf3", border: "#bbf7d0", text: "#166534", icon: "💾", tag: "Persisted" },
+};
+
+function StickyRow({ stickies }: { stickies: Sticky[] }) {
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {stickies.map((s, i) => {
+        const st = STICKY_STYLES[s.kind];
+        return (
+          <div
+            key={i}
+            title={s.detail}
+            className="group flex max-w-full items-start gap-2 rounded-md border px-2.5 py-1.5 text-[11px] leading-snug shadow-sm"
+            style={{ background: st.bg, borderColor: st.border, color: st.text }}
+          >
+            <span className="mt-px text-[13px]" aria-hidden>{st.icon}</span>
+            <div className="min-w-0">
+              <div className="font-mono text-[10px] uppercase tracking-wide opacity-70">{st.tag}</div>
+              <div className="font-semibold">{s.label}</div>
+              <div className="opacity-90">{s.detail}</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 type Props = {
   messages: ChatMessage[];
@@ -74,6 +108,7 @@ export function ChatPane({ messages, loading, onSend }: Props) {
               <div className="prose prose-sm max-w-none rounded-2xl rounded-bl-md border border-line bg-white px-4 py-2.5 text-sm leading-relaxed [&_h1]:mb-2 [&_h1]:mt-3 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:mb-1.5 [&_h3]:mt-2.5 [&_h3]:text-sm [&_h3]:font-semibold [&_p]:my-1.5 [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_code]:rounded [&_code]:bg-orange-soft [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[12px] [&_table]:my-2 [&_table]:w-full [&_table]:border-collapse [&_th]:border [&_th]:border-line [&_th]:bg-[#fafafa] [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_td]:border [&_td]:border-line [&_td]:px-2 [&_td]:py-1 [&_strong]:font-semibold">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
               </div>
+              {m.stickies && m.stickies.length > 0 && <StickyRow stickies={m.stickies} />}
             </div>
           ),
         )}

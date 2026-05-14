@@ -2,6 +2,7 @@ import { anthropic, MODEL } from "@/lib/anthropic";
 import { toolsForMemoryMode } from "@/lib/tools";
 import { executeToolUse, formatTrace } from "@/lib/tool-loop";
 import { readMemory, readSkill } from "@/lib/memory";
+import { buildStickies, type ObservedToolCall } from "@/lib/stickies";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { ChatMessage } from "@/components/ChatPane";
 
@@ -10,14 +11,34 @@ const MAX_ITERATIONS = 6;
 export async function runLlmToolsMemory(messages: ChatMessage[]) {
   const [claudeMd, skillMd] = await Promise.all([readMemory(), readSkill()]);
 
+  // Detect "first turn of a new thread": the user has sent exactly one message
+  // and the persistent memory has no Known facts yet. In that case, the model's
+  // job is to ask the scope question — nothing else.
+  const isFirstTurn = messages.filter((m) => m.role === "user").length === 1;
+  const hasKnownFacts = /^##\s*Known facts\s*\n[\s\S]*?^\s*-\s+/m.test(claudeMd);
+  const newThread = isFirstTurn && !hasKnownFacts;
+
+  const operatingRules = newThread
+    ? [
+        `You are the assistant in the Memory tab. This is the FIRST TURN of a new research thread (Known facts is empty).`,
+        ``,
+        `MANDATORY behavior for this turn:`,
+        `1. Do NOT call any tools — no rag_search, no web_search, no browser_*, no remember_fact.`,
+        `2. Your entire response is a short scope-clarifying question (2-3 sub-questions about segment, target customer, and any constraint).`,
+        `3. The user's message may already name a product — that is a starting point, not a full scope. Confirm before researching.`,
+        `4. Follow SKILL Step 1 verbatim.`,
+      ].join("\n")
+    : [
+        `You are the assistant in the Memory tab. Scope has been established (Known facts already has at least one bullet, or this is a follow-up turn).`,
+        ``,
+        `Operating rules:`,
+        `1. ALWAYS read <user_context> below FIRST.`,
+        `2. The instant the user reveals NEW durable info (segment refinement, strategic angle, constraint, decision), call \`remember_fact\` once.`,
+        `3. Now proceed with research per the SKILL procedure: rag_search first (if relevant), web_search if the corpus is silent, browser_* only for stateful pages.`,
+      ].join("\n");
+
   const system = [
-    `You are the assistant in the Memory tab of a teaching demo. The lesson here is how *persistent context + a written procedure* change agent behavior.`,
-    ``,
-    `Operating rules for this tab (override anything that would contradict):`,
-    `1. ALWAYS read <user_context> below FIRST. It is your persistent memory across turns and sessions.`,
-    `2. If <user_context> does not name the user's current research target and segment, you MUST follow SKILL Step 1 (scope question) BEFORE any tool call. Do not call rag_search/web_search/browser_* yet.`,
-    `3. The instant the user reveals a durable fact (target, segment, angle, constraint, decision), call \`remember_fact\` exactly once with a one-sentence summary. This is the headline behavior of this tab — leaning on it is required, not optional.`,
-    `4. Follow the procedure in the SKILL document strictly. Do not skip Step 1 to "save time."`,
+    operatingRules,
     ``,
     `--- SKILL ---`,
     skillMd.trim(),
@@ -29,6 +50,8 @@ export async function runLlmToolsMemory(messages: ChatMessage[]) {
   ].join("\n");
 
   const traces: string[] = [];
+  const toolCalls: ObservedToolCall[] = [];
+  let webSearchUsed = false;
   const apiMessages: Anthropic.MessageParam[] = messages.map((m) => ({
     role: m.role,
     content: m.content,
@@ -43,12 +66,22 @@ export async function runLlmToolsMemory(messages: ChatMessage[]) {
       messages: apiMessages,
     });
 
+    for (const block of response.content) {
+      if ((block as { type: string }).type === "server_tool_use" && (block as { name?: string }).name === "web_search") {
+        webSearchUsed = true;
+      }
+    }
+
     if (response.stop_reason !== "tool_use") {
       const text = response.content
         .filter((b): b is Anthropic.TextBlock => b.type === "text")
         .map((b) => b.text)
         .join("\n");
-      return { content: text, traces };
+      return {
+        content: text,
+        traces,
+        stickies: buildStickies({ mode: "memory", toolCalls, webSearchUsed }),
+      };
     }
 
     apiMessages.push({ role: "assistant", content: response.content });
@@ -56,6 +89,10 @@ export async function runLlmToolsMemory(messages: ChatMessage[]) {
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
     for (const block of response.content) {
       if (block.type !== "tool_use") continue;
+      toolCalls.push({
+        name: block.name,
+        input: block.input as Record<string, unknown>,
+      });
       const result = await executeToolUse({
         name: block.name,
         input: block.input as Record<string, unknown>,
@@ -92,5 +129,9 @@ export async function runLlmToolsMemory(messages: ChatMessage[]) {
     apiMessages.push({ role: "user", content: toolResults });
   }
 
-  return { content: "(stopped after max tool iterations)", traces };
+  return {
+    content: "(stopped after max tool iterations)",
+    traces,
+    stickies: buildStickies({ mode: "memory", toolCalls, webSearchUsed }),
+  };
 }

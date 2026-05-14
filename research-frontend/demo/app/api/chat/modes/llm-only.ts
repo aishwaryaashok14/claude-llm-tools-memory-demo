@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { anthropic, MODEL } from "@/lib/anthropic";
 import type { ChatMessage } from "@/components/ChatPane";
+import { buildStickies } from "@/lib/stickies";
 
 export async function runLlmOnly(messages: ChatMessage[]) {
   const response = await anthropic.messages.create({
@@ -22,5 +23,5 @@ Be honest about limits **up front**. Don't bury caveats at the end. After the ho
     .map((b) => b.text)
     .join("\n");
 
-  return { content: text, traces: [] };
+  return { content: text, traces: [], stickies: buildStickies({ mode: "llm" }) };
 }
