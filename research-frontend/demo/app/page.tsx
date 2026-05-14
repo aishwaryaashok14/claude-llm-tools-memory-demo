@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChatPane, type ChatMessage } from "@/components/ChatPane";
+import { MemoryPanel } from "@/components/MemoryPanel";
 
 type Mode = "llm" | "tools" | "memory";
 
@@ -17,6 +18,18 @@ export default function Home() {
     llm: [], tools: [], memory: [],
   });
   const [loading, setLoading] = useState(false);
+  const [mem, setMem] = useState({ claudeMd: "", skillMd: "" });
+
+  async function refreshMemory() {
+    try {
+      const res = await fetch("/api/memory");
+      if (res.ok) setMem(await res.json());
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (active === "memory") refreshMemory();
+  }, [active]);
 
   async function handleSend(text: string) {
     const next = [...histories[active], { role: "user", content: text } as ChatMessage];
@@ -35,6 +48,7 @@ export default function Home() {
         traces: data.traces,
       };
       setHistories((h) => ({ ...h, [active]: [...next, reply] }));
+      if (active === "memory") refreshMemory();
     } catch (err) {
       setHistories((h) => ({
         ...h,
@@ -46,7 +60,7 @@ export default function Home() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
+    <main className="mx-auto max-w-6xl p-8">
       <header className="mb-6 flex items-center gap-3">
         <div className="flex h-7 w-7 items-center justify-center rounded-md bg-orange font-bold text-white">✻</div>
         <h1 className="text-base font-semibold">Research Assistant — Wispr Flow workshop</h1>
@@ -69,12 +83,21 @@ export default function Home() {
             </button>
           ))}
         </div>
-        <div className="min-h-[440px] p-6">
-          <ChatPane
-            messages={histories[active]}
-            loading={loading}
-            onSend={handleSend}
-          />
+
+        <div
+          className={
+            "min-h-[460px] " +
+            (active === "memory" ? "grid grid-cols-[1fr_260px]" : "")
+          }
+        >
+          <div className="p-6">
+            <ChatPane
+              messages={histories[active]}
+              loading={loading}
+              onSend={handleSend}
+            />
+          </div>
+          {active === "memory" && <MemoryPanel claudeMd={mem.claudeMd} skillMd={mem.skillMd} />}
         </div>
       </div>
     </main>
