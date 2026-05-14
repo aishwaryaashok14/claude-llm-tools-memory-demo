@@ -1,0 +1,61 @@
+import { anthropic, MODEL } from "@/lib/anthropic";
+import { toolsForToolsMode } from "@/lib/tools";
+import { executeToolUse, formatTrace } from "@/lib/tool-loop";
+import type Anthropic from "@anthropic-ai/sdk";
+import type { ChatMessage } from "@/components/ChatPane";
+
+const MAX_ITERATIONS = 6;
+
+const SYSTEM = `You are a research assistant for the dictation / voice-AI space.
+Use tools to ground every claim in real data.
+
+Tool priority: rag_search first (the local corpus is curated). web_search for fresh news
+or competitors not in the corpus. browser_navigate / browser_click only when you need
+stateful UI or JS-rendered content.`;
+
+export async function runLlmTools(messages: ChatMessage[]) {
+  const traces: string[] = [];
+  const apiMessages: Anthropic.MessageParam[] = messages.map((m) => ({
+    role: m.role,
+    content: m.content,
+  }));
+
+  for (let i = 0; i < MAX_ITERATIONS; i++) {
+    const response = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 2048,
+      system: SYSTEM,
+      tools: toolsForToolsMode as Anthropic.ToolUnion[],
+      messages: apiMessages,
+    });
+
+    if (response.stop_reason !== "tool_use") {
+      const text = response.content
+        .filter((b): b is Anthropic.TextBlock => b.type === "text")
+        .map((b) => b.text)
+        .join("\n");
+      return { content: text, traces };
+    }
+
+    apiMessages.push({ role: "assistant", content: response.content });
+
+    const toolResults: Anthropic.ToolResultBlockParam[] = [];
+    for (const block of response.content) {
+      if (block.type !== "tool_use") continue;
+      traces.push(formatTrace(block.name, block.input as Record<string, unknown>));
+      const output = await executeToolUse({
+        name: block.name,
+        input: block.input as Record<string, unknown>,
+      });
+      toolResults.push({
+        type: "tool_result",
+        tool_use_id: block.id,
+        content: output.slice(0, 6000),
+      });
+    }
+
+    apiMessages.push({ role: "user", content: toolResults });
+  }
+
+  return { content: "(stopped after max tool iterations)", traces };
+}

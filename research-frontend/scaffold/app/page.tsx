@@ -1,0 +1,105 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { ChatPane, type ChatMessage } from "@/components/ChatPane";
+import { MemoryPanel } from "@/components/MemoryPanel";
+
+type Mode = "llm" | "tools" | "memory";
+
+const TABS: { id: Mode; label: string }[] = [
+  { id: "llm", label: "LLM" },
+  { id: "tools", label: "+ Tools" },
+  { id: "memory", label: "+ Tools + Memory" },
+];
+
+export default function Home() {
+  const [active, setActive] = useState<Mode>("llm");
+  const [histories, setHistories] = useState<Record<Mode, ChatMessage[]>>({
+    llm: [], tools: [], memory: [],
+  });
+  const [loading, setLoading] = useState(false);
+  const [mem, setMem] = useState({ claudeMd: "", skillMd: "" });
+
+  async function refreshMemory() {
+    try {
+      const res = await fetch("/api/memory");
+      if (res.ok) setMem(await res.json());
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (active === "memory") refreshMemory();
+  }, [active]);
+
+  async function handleSend(text: string) {
+    const next = [...histories[active], { role: "user", content: text } as ChatMessage];
+    setHistories({ ...histories, [active]: next });
+    setLoading(true);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: active, messages: next }),
+      });
+      const data = await res.json();
+      const reply: ChatMessage = {
+        role: "assistant",
+        content: data.content ?? "(no reply)",
+        traces: data.traces,
+      };
+      setHistories((h) => ({ ...h, [active]: [...next, reply] }));
+      if (active === "memory") refreshMemory();
+    } catch (err) {
+      setHistories((h) => ({
+        ...h,
+        [active]: [...next, { role: "assistant", content: `Error: ${(err as Error).message}` }],
+      }));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="mx-auto max-w-6xl p-8">
+      <header className="mb-6 flex items-center gap-3">
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-orange font-bold text-white">✻</div>
+        <h1 className="text-base font-semibold">Research Assistant — Wispr Flow workshop</h1>
+      </header>
+
+      <div className="rounded-2xl border border-line bg-white shadow-sm">
+        <div className="flex border-b border-line px-5">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActive(t.id)}
+              className={
+                "border-b-2 px-4 py-3 text-sm transition " +
+                (active === t.id
+                  ? "border-orange font-semibold text-ink"
+                  : "border-transparent text-ink-3 hover:text-ink-2")
+              }
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div
+          className={
+            "min-h-[460px] " +
+            (active === "memory" ? "grid grid-cols-[1fr_260px]" : "")
+          }
+        >
+          <div className="p-6">
+            <ChatPane
+              messages={histories[active]}
+              loading={loading}
+              onSend={handleSend}
+            />
+          </div>
+          {active === "memory" && <MemoryPanel claudeMd={mem.claudeMd} skillMd={mem.skillMd} />}
+        </div>
+      </div>
+    </main>
+  );
+}
