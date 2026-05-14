@@ -6,10 +6,10 @@ import { MemoryPanel } from "@/components/MemoryPanel";
 
 type Mode = "llm" | "tools" | "memory";
 
-const TABS: { id: Mode; label: string }[] = [
-  { id: "llm", label: "LLM" },
-  { id: "tools", label: "+ Tools" },
-  { id: "memory", label: "+ Tools + Memory" },
+const TABS: { id: Mode; label: string; hint: string }[] = [
+  { id: "llm", label: "LLM", hint: "no tools, no memory" },
+  { id: "tools", label: "+ Tools", hint: "rag + web + browser" },
+  { id: "memory", label: "+ Tools + Memory", hint: "memory + skill + remember_fact" },
 ];
 
 export default function Home() {
@@ -60,10 +60,10 @@ export default function Home() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl p-8">
+    <main className="mx-auto max-w-7xl p-8">
       <header className="mb-6 flex items-center gap-3">
         <div className="flex h-7 w-7 items-center justify-center rounded-md bg-orange font-bold text-white">✻</div>
-        <h1 className="text-base font-semibold">Research Assistant — Wispr Flow workshop</h1>
+        <h1 className="text-base font-semibold">Competitor Research Agent — Agentic AI PM Course</h1>
       </header>
 
       <div className="rounded-2xl border border-line bg-white shadow-sm">
@@ -73,13 +73,14 @@ export default function Home() {
               key={t.id}
               onClick={() => setActive(t.id)}
               className={
-                "border-b-2 px-4 py-3 text-sm transition " +
+                "flex flex-col items-start border-b-2 px-4 py-2 text-left transition " +
                 (active === t.id
-                  ? "border-orange font-semibold text-ink"
+                  ? "border-orange text-ink"
                   : "border-transparent text-ink-3 hover:text-ink-2")
               }
             >
-              {t.label}
+              <span className={"text-sm " + (active === t.id ? "font-semibold" : "")}>{t.label}</span>
+              <span className="text-[10px] text-ink-3">{t.hint}</span>
             </button>
           ))}
         </div>

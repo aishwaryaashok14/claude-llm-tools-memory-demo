@@ -26,9 +26,6 @@ export function ChatPane({ messages, loading, onSend }: Props) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 space-y-3 overflow-y-auto px-1">
-        {messages.length === 0 && (
-          <p className="text-ink-3">Ask about Wispr Flow&apos;s competitive landscape to begin.</p>
-        )}
         {messages.map((m, i) =>
           m.role === "user" ? (
             <div
