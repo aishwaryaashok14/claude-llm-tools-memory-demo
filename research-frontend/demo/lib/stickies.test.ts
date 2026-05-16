@@ -108,4 +108,39 @@ describe("buildStickies", () => {
       expect(kinds).toContain("remember");
     });
   });
+
+  describe("short-term mode", () => {
+    it("returns a single short-term sticky regardless of inputs", () => {
+      const stickies = buildStickies({ mode: "short-term" });
+      expect(stickies).toHaveLength(1);
+      expect(stickies[0].kind).toBe("short-term");
+      expect(stickies[0].label).toMatch(/short-term/i);
+      expect(stickies[0].detail).toMatch(/transcript|history/i);
+    });
+  });
+
+  describe("long-term mode", () => {
+    it("always includes the CLAUDE.md sticky, never SKILL or tool stickies", () => {
+      const stickies = buildStickies({
+        mode: "long-term",
+        toolCalls: [{ name: "rag_search", input: { query: "x" } }],
+      });
+      const kinds = stickies.map((s) => s.kind);
+      expect(kinds).toContain("memory");
+      expect(kinds).not.toContain("skill");
+      expect(kinds).not.toContain("tool");
+    });
+
+    it("emits a remember sticky when remember_fact fired, with the fact in detail", () => {
+      const stickies = buildStickies({
+        mode: "long-term",
+        toolCalls: [
+          { name: "remember_fact", input: { fact: "User researches Luma AI." } },
+        ],
+      });
+      const remember = stickies.find((s) => s.kind === "remember");
+      expect(remember).toBeDefined();
+      expect(remember!.detail).toContain("Luma AI");
+    });
+  });
 });

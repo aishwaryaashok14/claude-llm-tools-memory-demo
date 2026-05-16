@@ -1,4 +1,4 @@
-export type StickyKind = "llm-only" | "tool" | "memory" | "skill" | "remember";
+export type StickyKind = "llm-only" | "tool" | "memory" | "skill" | "remember" | "short-term";
 
 export type Sticky = {
   kind: StickyKind;
@@ -12,7 +12,7 @@ export type ObservedToolCall = {
 };
 
 export type BuildStickiesInput = {
-  mode: "llm" | "tools" | "memory";
+  mode: "llm" | "short-term" | "long-term" | "tools" | "memory";
   toolCalls?: ObservedToolCall[];
   webSearchUsed?: boolean;
 };
@@ -40,6 +40,14 @@ const SKILL_LOADED: Sticky = {
   kind: "skill",
   label: "SKILL loaded",
   detail: "skills/research/SKILL.md injected into the system prompt — the model follows its procedure.",
+};
+
+// lib/stickies.test.ts asserts the word "transcript" appears in `detail` — wording is load-bearing.
+const SHORT_TERM: Sticky = {
+  kind: "short-term",
+  label: "Short-term memory",
+  detail:
+    "The full conversation transcript is replayed in messages[] every turn. Volatile — a new session wipes it. No persisted store, no tools.",
 };
 
 function toolSticky(name: string, count: number, sample: ObservedToolCall): Sticky {
@@ -86,6 +94,21 @@ function toolSticky(name: string, count: number, sample: ObservedToolCall): Stic
 
 export function buildStickies(input: BuildStickiesInput): Sticky[] {
   if (input.mode === "llm") return [LLM_ONLY];
+  if (input.mode === "short-term") return [SHORT_TERM];
+
+  // long-term: only CLAUDE.md + remember_fact chips — tool/skill chips are never emitted.
+  if (input.mode === "long-term") {
+    const out: Sticky[] = [CLAUDE_MD];
+    for (const c of input.toolCalls ?? []) {
+      if (c.name !== "remember_fact") continue;
+      out.push({
+        kind: "remember",
+        label: "remember_fact",
+        detail: `Saved to memory/CLAUDE.md: "${String(c.input.fact ?? "")}"`,
+      });
+    }
+    return out;
+  }
 
   const calls = input.toolCalls ?? [];
   const grouped = new Map<string, ObservedToolCall[]>();
