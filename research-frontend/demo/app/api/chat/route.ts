@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { runLlmOnly } from "./modes/llm-only";
 import { runLlmTools } from "./modes/llm-tools";
 import { runLlmToolsMemory } from "./modes/llm-tools-memory";
+import { runShortTerm } from "./modes/short-term";
+import { runLongTerm } from "./modes/long-term";
 
 export const runtime = "nodejs";
 
@@ -11,6 +13,10 @@ export async function POST(req: NextRequest) {
     switch (mode) {
       case "llm":
         return NextResponse.json(await runLlmOnly(messages));
+      case "short-term":
+        return NextResponse.json(await runShortTerm(messages));
+      case "long-term":
+        return NextResponse.json(await runLongTerm(messages));
       case "tools":
         return NextResponse.json(await runLlmTools(messages));
       case "memory":

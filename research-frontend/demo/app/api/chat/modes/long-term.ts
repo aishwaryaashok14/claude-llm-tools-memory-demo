@@ -6,6 +6,7 @@ import { buildStickies, type ObservedToolCall } from "@/lib/stickies";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { ChatMessage } from "@/components/ChatPane";
 
+// Only remember_fact is available here, so a short loop is plenty (the capstone uses 6 for multi-tool research).
 const MAX_ITERATIONS = 4;
 
 export async function runLongTerm(messages: ChatMessage[]) {
@@ -73,6 +74,7 @@ export async function runLongTerm(messages: ChatMessage[]) {
       toolResults.push({
         type: "tool_result",
         tool_use_id: block.id,
+        // remember_fact returns a short string; no image branch needed (this mode has no browser tools).
         content: result.text.slice(0, 4000),
       });
     }
