@@ -3,25 +3,44 @@
 import { useEffect, useState } from "react";
 import { ChatPane, type ChatMessage } from "@/components/ChatPane";
 import { MemoryPanel } from "@/components/MemoryPanel";
+import { LessonPanel, type Mode } from "@/components/LessonPanel";
 
-type Mode = "llm" | "tools" | "memory";
-
-const TABS: { id: Mode; label: string; hint: string; banner: string; tone: "warn" | "ok" }[] = [
+const TABS: { id: Mode; label: string; hint: string; banner: string; tone: "warn" | "ok"; lessonOpen: boolean }[] = [
   {
     id: "llm",
     label: "LLM",
-    hint: "no tools, no memory",
+    hint: "no memory, no tools",
     banner:
-      "⚠️ No tools, no memory. Answers come only from the LLM's training data (cutoff ~early 2025). No web access, no corpus retrieval, no source citations possible.",
+      "⚠️ Stateless. Only the current message reaches the model — no prior turns, no tools, no persisted memory. Ask it something from earlier and it won't know.",
     tone: "warn",
+    lessonOpen: true,
+  },
+  {
+    id: "short-term",
+    label: "+ Short-term",
+    hint: "in-context transcript",
+    banner:
+      "💬 Short-term memory: the entire conversation transcript is replayed every turn. It remembers within this session — but press 🔄 New session and it forgets everything. No tools, no persisted store.",
+    tone: "ok",
+    lessonOpen: true,
+  },
+  {
+    id: "long-term",
+    label: "+ Long-term",
+    hint: "persistent CLAUDE.md",
+    banner:
+      "✅ Long-term memory: no transcript is replayed, but memory/CLAUDE.md is injected into the system prompt every request. remember_fact writes durable facts. Press 🔄 New session — it still knows you, from disk.",
+    tone: "ok",
+    lessonOpen: true,
   },
   {
     id: "tools",
     label: "+ Tools",
     hint: "rag + web + browser",
     banner:
-      "✓ Tools enabled: rag_search (5-doc corpus), web_search (Anthropic live search), browser_* (Playwright). The model chooses which tool to call.",
+      "✓ Tools enabled (stateless): rag_search, web_search, browser_*. Grounded answers — but no memory of who you are or earlier turns.",
     tone: "ok",
+    lessonOpen: false,
   },
   {
     id: "memory",
@@ -30,18 +49,22 @@ const TABS: { id: Mode; label: string; hint: string; banner: string; tone: "warn
     banner:
       "✓ Tools + Memory: everything from the Tools tab, plus the system prompt loads memory/CLAUDE.md and skills/research/SKILL.md every turn. The remember_fact tool persists user context.",
     tone: "ok",
+    lessonOpen: false,
   },
 ];
 
+const EMPTY_HISTORIES: Record<Mode, ChatMessage[]> = {
+  llm: [], "short-term": [], "long-term": [], tools: [], memory: [],
+};
+
 export default function Home() {
   const [active, setActive] = useState<Mode>("llm");
-  const [histories, setHistories] = useState<Record<Mode, ChatMessage[]>>({
-    llm: [], tools: [], memory: [],
-  });
+  const [histories, setHistories] = useState<Record<Mode, ChatMessage[]>>(EMPTY_HISTORIES);
   const [loading, setLoading] = useState(false);
   const [mem, setMem] = useState({ claudeMd: "", skillMd: "" });
 
   const activeTab = TABS.find((t) => t.id === active)!;
+  const showPanel = active === "long-term" || active === "memory";
 
   async function refreshMemory() {
     try {
@@ -51,8 +74,12 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (active === "memory") refreshMemory();
-  }, [active]);
+    if (showPanel) refreshMemory();
+  }, [active, showPanel]);
+
+  function newSession() {
+    setHistories((h) => ({ ...h, [active]: [] }));
+  }
 
   async function handleSend(text: string) {
     const next = [...histories[active], { role: "user", content: text } as ChatMessage];
@@ -72,7 +99,7 @@ export default function Home() {
         stickies: data.stickies,
       };
       setHistories((h) => ({ ...h, [active]: [...next, reply] }));
-      if (active === "memory") refreshMemory();
+      if (showPanel) refreshMemory();
     } catch (err) {
       setHistories((h) => ({
         ...h,
@@ -109,31 +136,36 @@ export default function Home() {
           ))}
         </div>
 
+        <LessonPanel key={active} active={active} defaultOpen={activeTab.lessonOpen} />
+
         <div
           className={
-            "px-6 py-3 text-xs leading-relaxed " +
+            "flex items-center gap-3 px-6 py-3 text-xs leading-relaxed " +
             (activeTab.tone === "warn"
               ? "border-b border-orange-border bg-orange-soft text-ink-2"
               : "border-b border-line bg-[#fafafa] text-ink-2")
           }
         >
-          {activeTab.banner}
+          <span className="flex-1">{activeTab.banner}</span>
+          <button
+            onClick={newSession}
+            className="shrink-0 rounded-md border border-line bg-white px-2.5 py-1 text-[11px] font-medium text-ink-2 hover:text-ink"
+          >
+            🔄 New session
+          </button>
         </div>
 
-        <div
-          className={
-            "h-[600px] " +
-            (active === "memory" ? "grid grid-cols-[1fr_280px]" : "flex")
-          }
-        >
+        <div className={"h-[600px] " + (showPanel ? "grid grid-cols-[1fr_280px]" : "flex")}>
           <div className="flex flex-1 flex-col p-6">
-            <ChatPane
-              messages={histories[active]}
-              loading={loading}
-              onSend={handleSend}
-            />
+            <ChatPane messages={histories[active]} loading={loading} onSend={handleSend} />
           </div>
-          {active === "memory" && <MemoryPanel claudeMd={mem.claudeMd} skillMd={mem.skillMd} />}
+          {showPanel && (
+            <MemoryPanel
+              claudeMd={mem.claudeMd}
+              skillMd={mem.skillMd}
+              showSkill={active === "memory"}
+            />
+          )}
         </div>
       </div>
     </main>
