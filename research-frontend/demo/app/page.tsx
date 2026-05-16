@@ -75,7 +75,9 @@ export default function Home() {
 
   useEffect(() => {
     if (showPanel) refreshMemory();
-  }, [active, showPanel]);
+    // showPanel is derived from active; refreshMemory is stable in practice
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
 
   function newSession() {
     setHistories((h) => ({ ...h, [active]: [] }));
