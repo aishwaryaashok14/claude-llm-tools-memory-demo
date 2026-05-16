@@ -20,10 +20,11 @@ export async function runLlmTools(messages: ChatMessage[]) {
   const traces: string[] = [];
   const toolCalls: ObservedToolCall[] = [];
   let webSearchUsed = false;
-  const apiMessages: Anthropic.MessageParam[] = messages.map((m) => ({
-    role: m.role,
-    content: m.content,
-  }));
+  // Stateless: only the latest user message seeds the loop — no prior turns.
+  // The within-turn tool loop still appends assistant/tool_result blocks below.
+  const apiMessages: Anthropic.MessageParam[] = [
+    { role: "user", content: messages[messages.length - 1]?.content ?? "" },
+  ];
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     const response = await anthropic.messages.create({
