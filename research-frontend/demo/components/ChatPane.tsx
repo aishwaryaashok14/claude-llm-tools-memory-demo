@@ -15,6 +15,7 @@ const STICKY_STYLES: Record<Sticky["kind"], { bg: string; border: string; text: 
   memory:      { bg: "#eef4ff", border: "#cfd9f7", text: "#1f3a8a", icon: "📄", tag: "Memory" },
   skill:       { bg: "#f5eeff", border: "#dccaf7", text: "#5b21b6", icon: "📘", tag: "Skill" },
   remember:    { bg: "#ecfdf3", border: "#bbf7d0", text: "#166534", icon: "💾", tag: "Persisted" },
+  "short-term": { bg: "#ecfeff", border: "#a5f3fc", text: "#155e75", icon: "💬", tag: "Memory" },
 };
 
 function StickyRow({ stickies }: { stickies: Sticky[] }) {
