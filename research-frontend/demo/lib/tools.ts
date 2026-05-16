@@ -67,3 +67,5 @@ export const toolsForToolsMode: (Anthropic.Tool | typeof webSearchTool)[] = [
 ];
 
 export const toolsForMemoryMode = [...toolsForToolsMode, rememberFactTool];
+
+export const toolsForLongTermMode = [rememberFactTool];
