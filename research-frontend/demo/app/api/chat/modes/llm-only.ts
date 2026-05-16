@@ -15,7 +15,13 @@ For any question requiring fresh or specific information, START your reply with 
 - "I have no way to cite sources in this layer, so..."
 
 Be honest about limits **up front**. Don't bury caveats at the end. After the honest opener, give the most useful answer you can from training data alone.`,
-    messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    // Stateless: only the latest user message reaches the model — no prior turns.
+    messages: [
+      {
+        role: "user",
+        content: messages[messages.length - 1]?.content ?? "",
+      },
+    ],
   });
 
   const text = response.content
