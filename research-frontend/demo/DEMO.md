@@ -1,123 +1,81 @@
 # Demo script — Agentic AI PM course
 
-A walkthrough for instructors. Three tabs, three layers of capability. Each
-prompt below is chosen to light up a specific combination of "stickies" (the
-chips that appear under each assistant reply explaining *why* the model
-behaved the way it did).
+Five tabs, a contrastive memory ladder. Each tab changes exactly one variable.
+The collapsible **Lesson** panel at the top of every tab shows the same two
+comparison tables (Behavior / Capabilities) with the current row highlighted.
 
-## ⭐ The headline demo — same prompt in all three tabs
+## The headline: the 🔄 New session punchline
 
-> **Prompt:** `Give me a competitor analysis for AI dictation tools.`
+Run this two-turn script in **+ Short-term**, then in **+ Long-term**:
 
-| Tab | What the audience sees |
+1. `My name is Aishwarya and I'm researching Luma AI.`
+2. `What's my name, and what am I researching?`
+
+Both recall it correctly. Now press **🔄 New session** in each tab and ask
+turn 2 again:
+
+| Tab | After 🔄 New session |
 |---|---|
-| **LLM** | Honest disclaimer ("I can't verify current data…"), fuzzy recall from training data. Sticky: 🧠 **LLM only**. |
-| **+ Tools** | Dives straight into `rag_search` (corpus has 5 dictation tools), may fall back to `web_search`. Stickies: 🔧 **rag_search**, possibly 🔧 **web_search**. **No scope question.** |
-| **+ Tools + Memory** | *Stops and asks* a 2–3 part scope question. **No tools fire.** Stickies: 📄 **CLAUDE.md loaded**, 📘 **SKILL loaded** only. |
+| **+ Short-term** | "I don't have that — this is a fresh conversation." Transcript was volatile; it died with the session. |
+| **+ Long-term** | "You're Aishwarya, researching Luma AI." It re-read memory/CLAUDE.md from disk. Sticky: 📄 CLAUDE.md loaded (+ 💾 remember_fact on turn 1). |
 
-The visual punchline: same input, dramatically different sticky rows.
-
-> ⚠️ **One-time setup for Tab 3 to do this:** `memory/CLAUDE.md` ships with
-> example bullets under `## Known facts`. Clear them (delete the bullets,
-> leave the heading) so the model treats this as a new thread. Otherwise it
-> will skip the scope step.
+That single contrast is the whole lesson: short-term = replayed transcript,
+long-term = a persisted store re-injected every request.
 
 ---
 
-## Tab 1 — LLM only
+## Tab 1 — LLM (stateless)
 
-Goal: surface the limits of training data alone. Each prompt should make the
-model admit something.
+`What's my name?` after any earlier message → it cannot know. There is no
+history and no memory; only the current message reaches the model.
+Sticky: 🧠 **LLM only**.
 
-1. `What's Wispr Flow's current enterprise pricing, and how does it compare to Superwhisper?` — pricing changes; can't verify.
-2. `What did Aqua Voice ship in the last six months?` — recency cutoff.
-3. `Cite the three most-mentioned complaints about VoiceInk on Reddit.` — no way to cite from a layer with no retrieval.
+## Tab 2 — + Short-term
 
-Sticky every time: 🧠 **LLM only**.
+The transcript is replayed every turn, so multi-turn conversation works.
+Sticky every turn: 💬 **Short-term memory**. Press 🔄 → amnesia.
 
-**Talking point:** "This is what 'just an LLM' really means — training data
-plus nothing else. No web, no docs, no citations."
+## Tab 3 — + Long-term
 
----
+No transcript is replayed (each turn is a "fresh session"), but CLAUDE.md is
+injected every request. State a durable fact → 💾 **remember_fact** writes it;
+open the right-side panel to watch `## Known facts` grow. 🔄 does NOT wipe the
+file — that is the point. No rag/web/browser here.
 
-## Tab 2 — + Tools (rag + web + browser)
+## Tab 4 — + Tools (stateless)
 
-Goal: show each tool firing in isolation, then together.
+`What does our corpus say about Willow Voice's weaknesses?` → 🔧 `rag_search`.
+`Open wisprflow.ai and screenshot the hero.` → 🔧 `browser_navigate` +
+`browser_screenshot`. Grounded answers, but it has no memory of you or earlier
+turns — ask a follow-up referencing a prior turn and it won't recall it.
 
-| Prompt | Stickies you'll see |
-|---|---|
-| `What does our corpus say about Willow Voice's weaknesses?` | 🔧 `rag_search` (1×) |
-| `What's Otter.ai's current pricing?` *(not in corpus)* | 🔧 `rag_search` then 🔧 `web_search` |
-| `Open wisprflow.ai and screenshot the hero section.` | 🔧 `browser_navigate` + 🔧 `browser_screenshot` (inline image in the trace) |
-| `Build a 6-bullet competitor card for Aqua Voice with current pricing — cite sources.` | 🔧 `rag_search` + 🔧 `web_search` |
-| `Compare all five tools in our corpus on positioning and pricing.` | 🔧 `rag_search` (shown as "5×") |
+## Tab 5 — + Tools + Memory (the capstone, unchanged)
 
-**Talking point:** "Tools give grounding, but the model has no idea who you
-are or what you've already decided. Every conversation starts from zero."
+Make `## Known facts` in `memory/CLAUDE.md` empty before starting.
 
----
-
-## Tab 3 — + Tools + Memory  *(three-turn demo, in order)*
-
-Make sure `## Known facts` in `memory/CLAUDE.md` is **empty** before starting.
-
-### Turn 1 — deliberately under-scoped
-
-```
-I need a competitor analysis for an AI dictation tool.
-```
-
-→ Stickies: 📄 **CLAUDE.md loaded**, 📘 **SKILL loaded**. **No tools.**
-The model replies with a 2–3 part scope question. **This is the magic moment.**
-
-### Turn 2 — reveal scope
-
-```
-Anchor on US enterprise legal teams. The angle is accuracy + on-device privacy.
-I want to anchor against Wispr Flow and Superwhisper.
-```
-
-→ Stickies: 📄 + 📘 + 💾 **remember_fact** *(green — shows the fact it persisted)* + 🔧 **rag_search**.
-Open the right-side memory panel to show `Known facts` updated in real time.
-
-### Turn 3 — follow-up that uses persisted context
-
-```
-What's the single strongest gap I can exploit against those two?
-```
-
-→ Stickies: 📄 + 📘 + 🔧 **rag_search**. **No re-asking of scope** — the
-model used persisted memory. That's the payoff.
-
-**Talking point:** "Memory plus a Skill turn the same model into a
-structured collaborator. It respects scope, persists what you've told it, and
-follows a procedure across turns instead of starting from zero."
-
----
-
-## Sticky cheat sheet
-
-| Icon | Kind | Meaning |
-|---|---|---|
-| 🧠 | LLM only | No tools, no memory. Training data only. |
-| 🔧 | Tool | A tool was called this turn. Detail names the tool and (if repeated) the count. |
-| 📄 | Memory | `memory/CLAUDE.md` was injected into the system prompt this turn (always-on in Tab 3). |
-| 📘 | Skill | `skills/research/SKILL.md` was injected into the system prompt this turn (always-on in Tab 3). |
-| 💾 | Persisted | `remember_fact` ran and wrote a new bullet into `memory/CLAUDE.md`. The detail shows the saved fact. |
-
-**Always-on vs per-turn:** 📄 and 📘 in Tab 3 appear **every turn** because
-those files *are* loaded every turn — that's the whole point. 🔧 and 💾
-chips only appear when the model actually chose to call that tool for the
-current query.
+1. `I need a competitor analysis for an AI dictation tool.` → scope question,
+   no tools. Stickies: 📄 + 📘.
+2. `Anchor on US enterprise legal teams; accuracy + on-device privacy; vs
+   Wispr Flow and Superwhisper.` → 📄 + 📘 + 💾 remember_fact + 🔧 rag_search.
+3. `What's the single strongest gap I can exploit against those two?` → uses
+   persisted context, no re-scoping.
 
 ---
 
 ## Reset between demos
 
-To reset Tab 3 for a fresh scope-first run:
+- **🔄 New session** (in-app button): clears the current tab's chat only.
+  Does NOT touch CLAUDE.md.
+- **Full reset of long-term memory:** open `memory/CLAUDE.md`, delete every
+  bullet under `## Known facts` (keep the heading), reload the page.
 
-1. Open `memory/CLAUDE.md`.
-2. Delete every bullet under `## Known facts` (keep the heading).
-3. Reload the browser tab (each tab keeps its own chat history in React state).
+## Sticky cheat sheet
 
-To reset all chat history without restarting the server: refresh the page.
+| Icon | Kind | Meaning |
+|---|---|---|
+| 🧠 | LLM only | No memory, no tools. Training data only. |
+| 💬 | Short-term | Full transcript replayed this turn. |
+| 📄 | Memory | memory/CLAUDE.md injected into the system prompt this turn. |
+| 📘 | Skill | skills/research/SKILL.md injected (capstone tab only). |
+| 💾 | Persisted | remember_fact wrote a bullet to memory/CLAUDE.md. |
+| 🔧 | Tool | A tool was called (Tools / capstone tabs only). |
